@@ -48,7 +48,7 @@ struct ContentView: View {
                 Text("\(model.window.start.formatted(date: .omitted, time: .standard)) – \(model.window.end.formatted(date: .omitted, time: .standard))").monospacedDigit()
             }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
         }
-        .frame(minWidth: 900, minHeight: 600)
+        .frame(minWidth: 680, minHeight: 380)
         .navigationTitle("Queries")
         .toolbar {
             ToolbarItemGroup {
