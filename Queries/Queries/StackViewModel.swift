@@ -30,6 +30,9 @@ struct CardState {
     @Published var customStart = Date().addingTimeInterval(-3600)
     @Published var customEnd = Date()
     @Published var nextRefresh: Date?
+    @Published var collapsed: Set<UUID> = []
+    func collapseAll() { collapsed = Set(collection.queries.map(\.id)) }
+    func expandAll() { collapsed = [] }
     private let store: QueryStore
     private var executorOverride: (any QueryExecuting)?
     private struct Job { let query: SavedQuery; let token: UUID; let window: QueryWindow; let context: String; let executor: any QueryExecuting }

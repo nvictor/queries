@@ -7,13 +7,13 @@ struct QueryCard: View {
     let state: CardState
     let window: QueryWindow
     let datasource: String
+    @Binding var isExpanded: Bool
     let run: () -> Void
     let edit: () -> Void
     let duplicate: () -> Void
     let up: () -> Void
     let down: () -> Void
     let delete: () -> Void
-    @State private var isExpanded = true
     @State private var showingNotes = false
 
     var body: some View {
@@ -97,7 +97,8 @@ struct QueryCard: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
-        }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(.quaternary))
+        }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(.quaternary))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
     }
 }

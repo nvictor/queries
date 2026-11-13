@@ -33,6 +33,8 @@ struct ContentView: View {
                         ForEach(model.collection.queries) { query in
                             QueryCard(query: query, state: model.states[query.id] ?? CardState(), window: model.window,
                                       datasource: model.datasources.first { $0.uid == query.datasourceUID }?.name ?? query.datasourceUID,
+                                      isExpanded: Binding(get: { !model.collapsed.contains(query.id) },
+                                                          set: { if $0 { model.collapsed.remove(query.id) } else { model.collapsed.insert(query.id) } }),
                                       run: { model.run(query) }, edit: { editing = query }, duplicate: { model.duplicate(query) },
                                       up: { model.move(query, by: -1) }, down: { model.move(query, by: 1) }, delete: { deleting = query })
                         }
@@ -55,14 +57,19 @@ struct ContentView: View {
                 Button { editing = SavedQuery() } label: { Label("Add Query", systemImage: "plus") }.keyboardShortcut("n").help("Add a saved query (⌘N)")
                 Picker("Time Range", selection: rangeBinding) {
                     Text("15m").tag(900.0); Text("1h").tag(3600.0); Text("6h").tag(21600.0); Text("24h").tag(86400.0); Text("Custom…").tag(-1.0)
-                }.frame(width: 125).help("Choose the time range for all queries")
+                }.fixedSize().help("Choose the time range for all queries")
                 Button { model.refreshAll() } label: { Label("Refresh All", systemImage: "arrow.clockwise") }.keyboardShortcut("r").help("Refresh all queries (⌘R)")
                 Picker("Auto-refresh", selection: $model.collection.refreshSeconds) {
                     Text("Auto: Off").tag(0); Text("30s").tag(30); Text("1m").tag(60); Text("5m").tag(300)
-                }.frame(width: 130).help("Choose how often all queries refresh automatically").onChange(of: model.collection.refreshSeconds) { model.persist(); model.scheduleNext() }
+                }.fixedSize().help("Choose how often all queries refresh automatically").onChange(of: model.collection.refreshSeconds) { model.persist(); model.scheduleNext() }
                 Menu {
-                    Button("Import Collection…") { model.importCollection() }
-                    Button("Export Collection…") { model.exportCollection() }
+                    Button("Collapse All", systemImage: "chevron.up.2") { withAnimation(.snappy(duration: 0.2)) { model.collapseAll() } }
+                        .keyboardShortcut("[", modifiers: [.command, .shift]).disabled(model.collection.queries.isEmpty).help("Collapse all query cards (⇧⌘[)")
+                    Button("Expand All", systemImage: "chevron.down.2") { withAnimation(.snappy(duration: 0.2)) { model.expandAll() } }
+                        .keyboardShortcut("]", modifiers: [.command, .shift]).disabled(model.collection.queries.isEmpty).help("Expand all query cards (⇧⌘])")
+                    Divider()
+                    Button("Import Collection…") { model.importCollection() }.help("Replace the current collection from a JSON file")
+                    Button("Export Collection…") { model.exportCollection() }.help("Save the current collection to a JSON file")
                 } label: { Label("Collection", systemImage: "folder") }.help("Import or export a query collection")
                 Button { model.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }.keyboardShortcut(",").help("Configure gcx and your connection (⌘,)")
             }
