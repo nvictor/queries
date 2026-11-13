@@ -46,25 +46,25 @@ struct ContentView: View {
                 Spacer()
                 if model.collection.refreshSeconds > 0 { Label("Auto-refresh \(model.nextRefresh == nil ? "paused" : "on")", systemImage: model.nextRefresh == nil ? "pause.circle" : "arrow.triangle.2.circlepath") }
                 Text("\(model.window.start.formatted(date: .omitted, time: .standard)) – \(model.window.end.formatted(date: .omitted, time: .standard))").monospacedDigit()
-            }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
+            }.font(.callout).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
         }
         .frame(minWidth: 680, minHeight: 360)
         .navigationTitle("Queries")
         .toolbar {
             ToolbarItemGroup {
-                Button { editing = SavedQuery() } label: { Label("Add Query", systemImage: "plus") }.keyboardShortcut("n")
+                Button { editing = SavedQuery() } label: { Label("Add Query", systemImage: "plus") }.keyboardShortcut("n").help("Add a saved query (⌘N)")
                 Picker("Time Range", selection: rangeBinding) {
                     Text("15m").tag(900.0); Text("1h").tag(3600.0); Text("6h").tag(21600.0); Text("24h").tag(86400.0); Text("Custom…").tag(-1.0)
-                }.frame(width: 125).help("Time range")
-                Button { model.refreshAll() } label: { Label("Refresh All", systemImage: "arrow.clockwise") }.keyboardShortcut("r")
+                }.frame(width: 125).help("Choose the time range for all queries")
+                Button { model.refreshAll() } label: { Label("Refresh All", systemImage: "arrow.clockwise") }.keyboardShortcut("r").help("Refresh all queries (⌘R)")
                 Picker("Auto-refresh", selection: $model.collection.refreshSeconds) {
                     Text("Auto: Off").tag(0); Text("30s").tag(30); Text("1m").tag(60); Text("5m").tag(300)
-                }.frame(width: 130).onChange(of: model.collection.refreshSeconds) { model.persist(); model.scheduleNext() }
+                }.frame(width: 130).help("Choose how often all queries refresh automatically").onChange(of: model.collection.refreshSeconds) { model.persist(); model.scheduleNext() }
                 Menu {
                     Button("Import Collection…") { model.importCollection() }
                     Button("Export Collection…") { model.exportCollection() }
-                } label: { Label("Collection", systemImage: "folder") }
-                Button { model.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }.keyboardShortcut(",")
+                } label: { Label("Collection", systemImage: "folder") }.help("Import or export a query collection")
+                Button { model.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }.keyboardShortcut(",").help("Configure gcx and your connection (⌘,)")
             }
         }
         .sheet(isPresented: $model.showSettings) { SetupView(model: model) }
@@ -96,7 +96,7 @@ struct SetupView: View {
                     if panel.runModal() == .OK, let url = panel.url { model.executablePath = url.path }
                 }
             }
-            Text(model.version).font(.caption).textSelection(.enabled)
+            Text(model.version).font(.callout).textSelection(.enabled)
             HStack {
                 TextField("Authenticated context", text: $model.collection.context).onChange(of: model.collection.context) { model.settingsChanged() }
                 Menu("Contexts") { ForEach(model.contexts, id: \.self) { context in Button(context) { model.collection.context = context } } }
@@ -108,7 +108,7 @@ struct SetupView: View {
                 Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString("brew install gcx\ngcx login CONTEXT_NAME", forType: .string) }
             }.padding(12).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
             Text(model.setupStatus).textSelection(.enabled)
-            if !model.datasources.isEmpty { ForEach(model.datasources) { source in Text("\(source.name) · \(source.type)").font(.caption).foregroundStyle(.secondary) } }
+            if !model.datasources.isEmpty { ForEach(model.datasources) { source in Text("\(source.name) · \(source.type)").font(.callout).foregroundStyle(.secondary) } }
             HStack {
                 Button("Retry / Test Connection") { Task { await model.testConnection() } }.disabled(model.setupBusy)
                 if model.setupBusy { ProgressView().controlSize(.small) }
@@ -144,7 +144,7 @@ struct QueryEditor: View {
             TextField("Unit (optional, display label)", text: $query.unit)
             if let error { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.callout) }
             HStack {
-                Text("Runs only when requested or on auto-refresh.").font(.caption).foregroundStyle(.secondary)
+                Text("Runs only when requested or on auto-refresh.").font(.callout).foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") { do { try query.validate(); save(query); dismiss() } catch { self.error = error.localizedDescription } }.keyboardShortcut(.defaultAction)

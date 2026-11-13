@@ -13,28 +13,30 @@ struct QueryCard: View {
     let up: () -> Void
     let down: () -> Void
     let delete: () -> Void
-    @State private var showQuery = false
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(query.title).font(.title3.weight(.semibold)).lineLimit(1)
                     HStack(spacing: 6) {
-                        Text(query.language.rawValue).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(languageTint.opacity(0.15), in: Capsule()).foregroundStyle(languageTint)
-                        Text("\(datasource) · \(query.kind.rawValue)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text("\(query.language.rawValue) · \(datasource)").font(.callout).foregroundStyle(.secondary).lineLimit(1).help("\(query.language.rawValue) · \(datasource)")
                     }
                 }
                 Spacer()
                 if state.loading { ProgressView().controlSize(.small) }
-                if state.stale { Label("Stale", systemImage: "clock.badge.exclamationmark").font(.caption.weight(.medium)).foregroundStyle(.orange).padding(.horizontal, 8).padding(.vertical, 3).background(.orange.opacity(0.12), in: Capsule()) }
+                if state.stale { Label("Stale", systemImage: "clock.badge.exclamationmark").font(.callout.weight(.medium)).foregroundStyle(.orange).padding(.horizontal, 8).padding(.vertical, 3).background(.orange.opacity(0.12), in: Capsule()) }
                 Button(action: run) { Label("Run", systemImage: "play.fill").labelStyle(.iconOnly) }.disabled(state.loading).help("Run query")
                 Button(action: edit) { Label("Edit", systemImage: "pencil").labelStyle(.iconOnly) }.help("Edit query")
                 Menu {
+                    Button("Copy Query", systemImage: "doc.on.doc") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(query.text, forType: .string)
+                    }
+                    Divider()
                     Button("Duplicate", systemImage: "plus.square.on.square", action: duplicate)
                     Button("Move Up", systemImage: "arrow.up", action: up); Button("Move Down", systemImage: "arrow.down", action: down)
                     Divider(); Button("Delete", systemImage: "trash", role: .destructive, action: delete)
-                } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Query actions")
+                } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Query actions").help("Copy, duplicate, reorder, or delete query")
             }.buttonStyle(.borderless).labelStyle(.titleAndIcon).controlSize(.large)
             if let error = state.error {
                 Label(error, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).textSelection(.enabled)
@@ -44,26 +46,19 @@ struct QueryCard: View {
                 if result.isEmpty { ContentUnavailableView("No results", systemImage: "tray", description: Text("The query returned no valid samples in this time range.")).frame(maxWidth: .infinity).frame(height: 180) }
                 else if query.kind == .logs { LogResults(entries: result.logs).frame(height: 300) }
                 else { MetricChart(series: result.series, window: window, step: result.window.step, unit: query.unit).frame(height: 260) }
-                ForEach(result.warnings, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
-                if query.kind == .logs { Text("Limit: 1,000 entries\(result.possiblyTruncated ? " · Limit reached. More entries may exist." : "")").font(.caption).foregroundStyle(result.possiblyTruncated ? .orange : .secondary) }
+                ForEach(result.warnings, id: \.self) { Text($0).font(.callout).foregroundStyle(.orange) }
+                if query.kind == .logs { Text("Limit: 1,000 entries\(result.possiblyTruncated ? " · Limit reached. More entries may exist." : "")").font(.callout).foregroundStyle(result.possiblyTruncated ? .orange : .secondary) }
             } else {
                 ContentUnavailableView(state.loading ? "Running query…" : "Ready to run", systemImage: "chart.xyaxis.line", description: Text("Use Run or Refresh All to fetch results.")).frame(maxWidth: .infinity).frame(height: 180)
             }
-            HStack {
-                Button { withAnimation(.snappy(duration: 0.2)) { showQuery.toggle() } } label: { Label("Query", systemImage: showQuery ? "chevron.down" : "chevron.right") }.buttonStyle(.plain).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                Spacer()
-                if let last = state.lastSuccess { Text("Last success \(last.formatted(date: .omitted, time: .standard))").font(.caption).foregroundStyle(.secondary) }
-            }
-            if showQuery {
-                HStack(alignment: .top) {
-                    Text(query.text).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                    Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(query.text, forType: .string) } label: { Image(systemName: "doc.on.doc") }.buttonStyle(.borderless).help("Copy query")
-                }.padding(10).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+            if let last = state.lastSuccess {
+                Text("Updated \(last.formatted(date: .omitted, time: .standard))")
+                    .font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(.quaternary))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
     }
-    private var languageTint: Color { query.language == .promQL ? .orange : .purple }
 }
 struct MetricChart: View {
     let series: [TimeSeries]
@@ -90,8 +85,8 @@ struct MetricChart: View {
             }
             .chartXScale(domain: window.start...max(window.end, window.start.addingTimeInterval(1)))
             .chartYAxisLabel(unit)
-            .chartYAxis { AxisMarks { _ in AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3])).foregroundStyle(.quaternary); AxisValueLabel().font(.caption2).foregroundStyle(.secondary) } }
-            .chartXAxis { AxisMarks { _ in AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(.quaternary.opacity(0.5)); AxisValueLabel(format: .dateTime.hour().minute()).font(.caption2).foregroundStyle(.secondary) } }
+            .chartYAxis { AxisMarks { _ in AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3])).foregroundStyle(.quaternary); AxisValueLabel().font(.callout).foregroundStyle(.secondary) } }
+            .chartXAxis { AxisMarks { _ in AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(.quaternary.opacity(0.5)); AxisValueLabel(format: .dateTime.hour().minute()).font(.callout).foregroundStyle(.secondary) } }
             .chartOverlay { proxy in
                 GeometryReader { geometry in
                     Rectangle().fill(.clear).contentShape(Rectangle()).onContinuousHover { phase in
@@ -111,7 +106,7 @@ struct MetricChart: View {
                             Text(line.label.isEmpty ? "Value" : line.label).lineLimit(1)
                         }.help(line.label)
                     }
-                }.font(.caption).foregroundStyle(.secondary)
+                }.font(.callout).foregroundStyle(.secondary)
             }
             if let selectedDate {
                 ScrollView(.horizontal) {
@@ -121,9 +116,9 @@ struct MetricChart: View {
                                 Text("\(line.label.isEmpty ? "Value" : line.label): \(sample.value!.formatted()) \(unit) at \(sample.timestamp.formatted(date: .omitted, time: .standard))\(line.isBridged(at: selectedDate, step: step) ? " · Cursor is over a bridged missing interval" : "")")
                             }
                         }
-                    }.font(.caption).textSelection(.enabled)
-                }.frame(height: 20)
-            } else { Text("Smoothed curve · Missing intervals connected · Hover for recorded samples").font(.caption).foregroundStyle(.secondary).frame(height: 20) }
+                    }.font(.callout).textSelection(.enabled)
+                }.frame(minHeight: 22)
+            } else { Text("Smoothed curve · Missing intervals connected · Hover for recorded samples").font(.callout).foregroundStyle(.secondary).frame(minHeight: 22) }
         }
         .accessibilityLabel("Smoothed time series chart. Missing samples are connected. \(series.count) series.")
     }
@@ -141,14 +136,14 @@ struct LogResults: View {
         List(entries) { entry in
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .top) {
-                    Button { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } label: { Image(systemName: expanded.contains(entry.id) ? "chevron.down" : "chevron.right") }.buttonStyle(.plain).accessibilityLabel("Expand log details")
+                    Button { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } label: { Image(systemName: expanded.contains(entry.id) ? "chevron.down" : "chevron.right") }.buttonStyle(.plain).accessibilityLabel(expanded.contains(entry.id) ? "Collapse log details" : "Expand log details").help(expanded.contains(entry.id) ? "Collapse log details" : "Show full message and labels")
                     Text(entry.timestamp.formatted(date: .omitted, time: .standard)).foregroundStyle(.secondary).frame(width: 90, alignment: .leading)
                     Text(entry.text).foregroundStyle(tint(entry.text)).lineLimit(expanded.contains(entry.id) ? nil : 2).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
                 }
                 if expanded.contains(entry.id) {
                     Text("Timestamp (ns): \(entry.sourceTimestamp)\n" + entry.labels.keys.sorted().map { "\($0)=\(entry.labels[$0]!)" }.joined(separator: "\n")).foregroundStyle(.secondary).textSelection(.enabled)
                 }
-            }.font(.system(.caption, design: .monospaced)).padding(.vertical, 3)
+            }.font(.system(.body, design: .monospaced)).padding(.vertical, 3)
         }.listStyle(.plain)
     }
 }
