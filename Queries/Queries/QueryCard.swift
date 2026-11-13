@@ -14,6 +14,7 @@ struct QueryCard: View {
     let down: () -> Void
     let delete: () -> Void
     @State private var isExpanded = true
+    @State private var showingNotes = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -48,6 +49,23 @@ struct QueryCard: View {
                 if state.stale { Label("Stale", systemImage: "clock.badge.exclamationmark").font(.callout.weight(.medium)).foregroundStyle(.orange).padding(.horizontal, 8).padding(.vertical, 3).background(.orange.opacity(0.12), in: Capsule()) }
                 Button(action: run) { Label("Run", systemImage: "play.fill").labelStyle(.iconOnly) }.disabled(state.loading).help("Run query")
                 Button(action: edit) { Label("Edit", systemImage: "pencil").labelStyle(.iconOnly) }.help("Edit query")
+                Button { showingNotes.toggle() } label: {
+                    Label("Query notes", systemImage: "info.circle").labelStyle(.iconOnly)
+                }
+                .help("Show query notes")
+                .popover(isPresented: $showingNotes, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Query notes").font(.headline)
+                        ScrollView {
+                            Text(query.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                 ? "Add context, expected values, or tips for interpreting this query’s results."
+                                 : query.notes)
+                                .font(.body).textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }.frame(maxHeight: 260)
+                        Button("Edit Notes…") { showingNotes = false; edit() }
+                    }.padding(20).frame(width: 360)
+                }
                 Menu {
                     Button("Copy Query", systemImage: "doc.on.doc") {
                         NSPasteboard.general.clearContents()

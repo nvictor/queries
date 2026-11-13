@@ -4,6 +4,26 @@ import XCTest
 
 final class CoreTests: XCTestCase {
     let window = QueryWindow(start: Date(timeIntervalSince1970: 0), end: Date(timeIntervalSince1970: 3600))
+    func testNotesRoundTripAndOlderCollections() throws {
+        let store = QueryStore()
+        var query = SavedQuery()
+        query.text = "up"
+        query.datasourceUID = "prometheus"
+        query.notes = "Expected: 1\nZero means the target is down."
+        var collection = QueryCollection()
+        collection.queries = [query]
+        let encoded = try store.encode(collection)
+        XCTAssertEqual(try store.decode(encoded), collection)
+
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        var queries = try XCTUnwrap(legacy["queries"] as? [[String: Any]])
+        queries[0].removeValue(forKey: "notes")
+        legacy["queries"] = queries
+        let decoded = try store.decode(JSONSerialization.data(withJSONObject: legacy))
+        query.notes = ""
+        XCTAssertEqual(decoded.queries, [query])
+    }
+
     func fixture(_ name: String) throws -> Data { try Data(contentsOf: Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures")!) }
     func testObservedFixtures() throws {
         for name in ["prometheus", "loki-metrics"] {

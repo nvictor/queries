@@ -142,6 +142,12 @@ struct QueryEditor: View {
             Text("Expression").font(.headline)
             TextEditor(text: $query.text).font(.system(.body, design: .monospaced)).frame(minHeight: 200).scrollContentBackground(.hidden).padding(8).background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
             TextField("Unit (optional, display label)", text: $query.unit)
+            Text("Notes (optional)").font(.headline)
+            TextEditor(text: $query.notes)
+                .font(.body).frame(height: 80).scrollContentBackground(.hidden)
+                .padding(8).background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel("Query notes")
+                .help("Add context, expected values, or tips for interpreting results")
             if let error { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.callout) }
             HStack {
                 Text("Runs only when requested or on auto-refresh.").font(.callout).foregroundStyle(.secondary)

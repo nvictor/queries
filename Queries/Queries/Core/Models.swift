@@ -10,7 +10,22 @@ public struct SavedQuery: Identifiable, Codable, Equatable, Sendable {
     public var kind: ResultKind = .metrics
     public var datasourceUID = ""
     public var unit = ""
+    public var notes = ""
     public init() {}
+    private enum CodingKeys: String, CodingKey {
+        case id, title, text, language, kind, datasourceUID, unit, notes
+    }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        title = try values.decode(String.self, forKey: .title)
+        text = try values.decode(String.self, forKey: .text)
+        language = try values.decode(QueryLanguage.self, forKey: .language)
+        kind = try values.decode(ResultKind.self, forKey: .kind)
+        datasourceUID = try values.decode(String.self, forKey: .datasourceUID)
+        unit = try values.decode(String.self, forKey: .unit)
+        notes = try values.decodeIfPresent(String.self, forKey: .notes) ?? ""
+    }
     public func validate() throws {
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
