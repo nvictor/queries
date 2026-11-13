@@ -15,8 +15,9 @@ jobs:
       contents: write
     env:
       SIGNING_IDENTITY: 'Developer ID Application: Victor Noagbodji (2DZ6D8C78T)'
-      KEYCHAIN_PATH: ${{ runner.temp }}/queries-${{ github.run_id }}-${{ github.run_attempt }}.keychain-db
     steps:
+      - name: Set keychain path
+        run: echo "KEYCHAIN_PATH=$RUNNER_TEMP/queries-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.keychain-db" >> "$GITHUB_ENV"
       - uses: actions/checkout@v5
       - name: Require macOS 27.2 SDK
         shell: bash
