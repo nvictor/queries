@@ -41,13 +41,13 @@ struct QueryCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading).padding(10).background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
             }
             if let result = state.result {
-                if result.isEmpty { ContentUnavailableView("No results", systemImage: "tray", description: Text("The query returned no valid samples in this time range.")).frame(height: 180) }
+                if result.isEmpty { ContentUnavailableView("No results", systemImage: "tray", description: Text("The query returned no valid samples in this time range.")).frame(maxWidth: .infinity).frame(height: 180) }
                 else if query.kind == .logs { LogResults(entries: result.logs).frame(height: 300) }
                 else { MetricChart(series: result.series, window: window, step: result.window.step, unit: query.unit).frame(height: 260) }
                 ForEach(result.warnings, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
                 if query.kind == .logs { Text("Limit: 1,000 entries\(result.possiblyTruncated ? " · Limit reached. More entries may exist." : "")").font(.caption).foregroundStyle(result.possiblyTruncated ? .orange : .secondary) }
             } else {
-                ContentUnavailableView(state.loading ? "Running query…" : "Ready to run", systemImage: "chart.xyaxis.line", description: Text("Use Run or Refresh All to fetch results.")).frame(height: 180)
+                ContentUnavailableView(state.loading ? "Running query…" : "Ready to run", systemImage: "chart.xyaxis.line", description: Text("Use Run or Refresh All to fetch results.")).frame(maxWidth: .infinity).frame(height: 180)
             }
             HStack {
                 Button { withAnimation(.snappy(duration: 0.2)) { showQuery.toggle() } } label: { Label("Query", systemImage: showQuery ? "chevron.down" : "chevron.right") }.buttonStyle(.plain).font(.caption.weight(.medium)).foregroundStyle(.secondary)
