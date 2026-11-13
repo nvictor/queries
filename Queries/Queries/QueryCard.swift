@@ -13,16 +13,37 @@ struct QueryCard: View {
     let up: () -> Void
     let down: () -> Void
     let delete: () -> Void
+    @State private var isExpanded = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(query.title).font(.title3.weight(.semibold)).lineLimit(1)
-                    HStack(spacing: 6) {
-                        Text("\(query.language.rawValue) · \(datasource)").font(.callout).foregroundStyle(.secondary).lineLimit(1).help("\(query.language.rawValue) · \(datasource)")
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { isExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.body.weight(.semibold)).foregroundStyle(.secondary)
+                            .frame(width: 16)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(query.title).font(.title3.weight(.semibold)).lineLimit(1)
+                            Text("\(query.language.rawValue) · \(datasource)")
+                                .font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .help(isExpanded ? "Collapse query results" : "Expand query results")
+                .accessibilityLabel(query.title)
+                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+                .accessibilityHint("Show or hide query results")
                 Spacer()
+                if !isExpanded, let error = state.error {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange).help(error)
+                        .accessibilityLabel("Query error: \(error)")
+                }
                 if state.loading { ProgressView().controlSize(.small) }
                 if state.stale { Label("Stale", systemImage: "clock.badge.exclamationmark").font(.callout.weight(.medium)).foregroundStyle(.orange).padding(.horizontal, 8).padding(.vertical, 3).background(.orange.opacity(0.12), in: Capsule()) }
                 Button(action: run) { Label("Run", systemImage: "play.fill").labelStyle(.iconOnly) }.disabled(state.loading).help("Run query")
@@ -38,23 +59,25 @@ struct QueryCard: View {
                     Divider(); Button("Delete", systemImage: "trash", role: .destructive, action: delete)
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Query actions").help("Copy, duplicate, reorder, or delete query")
             }.buttonStyle(.borderless).labelStyle(.titleAndIcon).controlSize(.large)
-            if let error = state.error {
-                Label(error, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(10).background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-            }
-            if let result = state.result {
-                if result.isEmpty { ContentUnavailableView("No results", systemImage: "tray", description: Text("The query returned no valid samples in this time range.")).frame(maxWidth: .infinity).frame(height: 180) }
-                else if query.kind == .logs { LogResults(entries: result.logs).frame(height: 300) }
-                else { MetricChart(series: result.series, window: window, step: result.window.step, unit: query.unit).frame(height: 260) }
-                ForEach(result.warnings, id: \.self) { Text($0).font(.callout).foregroundStyle(.orange) }
-                if query.kind == .logs { Text("Limit: 1,000 entries\(result.possiblyTruncated ? " · Limit reached. More entries may exist." : "")").font(.callout).foregroundStyle(result.possiblyTruncated ? .orange : .secondary) }
-            } else {
-                ContentUnavailableView(state.loading ? "Running query…" : "Ready to run", systemImage: "chart.xyaxis.line", description: Text("Use Run or Refresh All to fetch results.")).frame(maxWidth: .infinity).frame(height: 180)
-            }
-            if let last = state.lastSuccess {
-                Text("Updated \(last.formatted(date: .omitted, time: .standard))")
-                    .font(.callout).foregroundStyle(.secondary).monospacedDigit()
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+            if isExpanded {
+                if let error = state.error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(10).background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                }
+                if let result = state.result {
+                    if result.isEmpty { ContentUnavailableView("No results", systemImage: "tray", description: Text("The query returned no valid samples in this time range.")).frame(maxWidth: .infinity).frame(height: 180) }
+                    else if query.kind == .logs { LogResults(entries: result.logs).frame(height: 300) }
+                    else { MetricChart(series: result.series, window: window, step: result.window.step, unit: query.unit).frame(height: 260) }
+                    ForEach(result.warnings, id: \.self) { Text($0).font(.callout).foregroundStyle(.orange) }
+                    if query.kind == .logs { Text("Limit: 1,000 entries\(result.possiblyTruncated ? " · Limit reached. More entries may exist." : "")").font(.callout).foregroundStyle(result.possiblyTruncated ? .orange : .secondary) }
+                } else {
+                    ContentUnavailableView(state.loading ? "Running query…" : "Ready to run", systemImage: "chart.xyaxis.line", description: Text("Use Run or Refresh All to fetch results.")).frame(maxWidth: .infinity).frame(height: 180)
+                }
+                if let last = state.lastSuccess {
+                    Text("Updated \(last.formatted(date: .omitted, time: .standard))")
+                        .font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             }
         }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(.quaternary))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
