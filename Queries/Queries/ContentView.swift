@@ -3,20 +3,27 @@ import AppKit
 import Combine
 import UniformTypeIdentifiers
 
+struct CollectionDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+    var data: Data
+    init(data: Data) { self.data = data }
+    init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { FileWrapper(regularFileWithContents: data) }
+}
+
 struct ContentView: View {
-    @StateObject private var model = StackViewModel()
-    @State private var editing: SavedQuery?
+    @ObservedObject var model: StackViewModel
     @State private var deleting: SavedQuery?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openSettings) private var openSettings
     private let clock = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     var body: some View {
         VStack(spacing: 0) {
             if model.customRange {
-                HStack {
-                    DatePicker("From", selection: $model.customStart)
-                    DatePicker("To", selection: $model.customEnd)
-                    Button("Apply Range") { model.rangeChanged() }
-                }.padding(.horizontal, 16).padding(.vertical, 10).background(.bar)
+                ViewThatFits(in: .horizontal) {
+                    HStack { rangeFields }
+                    VStack(alignment: .leading) { rangeFields }
+                }.padding(.horizontal, 16).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading).background(.bar)
             }
             if model.collection.queries.isEmpty {
                 ContentUnavailableView {
@@ -24,67 +31,110 @@ struct ContentView: View {
                 } description: {
                     Text("Save a PromQL or LogQL query to start your stack.")
                 } actions: {
-                    Button("Add Query") { editing = SavedQuery() }.buttonStyle(.borderedProminent)
+                    Button("Add Query") { model.editing = SavedQuery() }.buttonStyle(.borderedProminent)
                     Button("Add Local Examples") { model.addLocalExamples() }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 20) {
-                        ForEach(model.collection.queries) { query in
-                            QueryCard(query: query, state: model.states[query.id] ?? CardState(), window: model.window,
-                                      datasource: model.datasources.first { $0.uid == query.datasourceUID }?.name ?? query.datasourceUID,
-                                      isExpanded: Binding(get: { !model.collapsed.contains(query.id) },
-                                                          set: { if $0 { model.collapsed.remove(query.id) } else { model.collapsed.insert(query.id) } }),
-                                      run: { model.run(query) }, edit: { editing = query }, duplicate: { model.duplicate(query) },
-                                      up: { model.move(query, by: -1) }, down: { model.move(query, by: 1) }, delete: { deleting = query })
-                        }
-                    }.padding(24).frame(maxWidth: 1100).frame(maxWidth: .infinity)
-                }.background(Color(nsColor: .windowBackgroundColor).opacity(0.6)).scrollContentBackground(.hidden)
+                GeometryReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            ForEach(model.collection.queries) { query in
+                                QueryCard(query: query, state: model.states[query.id] ?? CardState(), window: model.window,
+                                          datasource: model.datasources.first { $0.uid == query.datasourceUID }?.name ?? query.datasourceUID,
+                                          isExpanded: Binding(get: { !model.collapsed.contains(query.id) },
+                                                              set: { if $0 { model.collapsed.remove(query.id) } else { model.collapsed.insert(query.id) } }),
+                                          run: { model.run(query) }, edit: { model.editing = query }, duplicate: { model.duplicate(query) },
+                                          up: { model.move(query, by: -1) }, down: { model.move(query, by: 1) }, delete: { deleting = query })
+                                .dropDestination(for: String.self) { items, _ in
+                                    guard let raw = items.first, let id = UUID(uuidString: raw) else { return false }
+                                    withAnimation(.snappy(duration: 0.2)) { model.move(id, before: query.id) }
+                                    return true
+                                }
+                            }
+                        }.padding(20).frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                    }
+                    .environment(\.resultHeights, ResultHeights(viewport: proxy.size.height))
+                }.background(Color(nsColor: .windowBackgroundColor))
             }
             Divider()
-            HStack(spacing: 8) {
-                if model.runningCount > 0 { ProgressView().controlSize(.mini) }
-                Text(model.runningCount > 0 ? "Refreshing \(model.runningCount) \(model.runningCount == 1 ? "query" : "queries")…" : "\(model.collection.queries.count) saved \(model.collection.queries.count == 1 ? "query" : "queries")")
-                Spacer()
-                if model.collection.refreshSeconds > 0 { Label("Auto-refresh \(model.nextRefresh == nil ? "paused" : "on")", systemImage: model.nextRefresh == nil ? "pause.circle" : "arrow.triangle.2.circlepath") }
-                Text("\(model.window.start.formatted(date: .omitted, time: .standard)) – \(model.window.end.formatted(date: .omitted, time: .standard))").monospacedDigit()
-            }.font(.callout).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
+            statusBar
         }
-        .frame(minWidth: 680, minHeight: 360)
+        .frame(minWidth: 760, minHeight: 360)
         .navigationTitle("Queries")
         .toolbar {
-            ToolbarItemGroup {
-                Button { editing = SavedQuery() } label: { Label("Add Query", systemImage: "plus") }.keyboardShortcut("n").help("Add a saved query (⌘N)")
+            ToolbarItem(placement: .navigation) {
+                Button { model.editing = SavedQuery() } label: { Label("Add Query", systemImage: "plus") }.help("Add a saved query (⌘N)")
+            }
+            ToolbarItemGroup(placement: .primaryAction) {
                 Picker("Time Range", selection: rangeBinding) {
                     Text("15m").tag(900.0); Text("1h").tag(3600.0); Text("6h").tag(21600.0); Text("24h").tag(86400.0); Text("Custom…").tag(-1.0)
                 }.fixedSize().help("Choose the time range for all queries")
-                Button { model.refreshAll() } label: { Label("Refresh All", systemImage: "arrow.clockwise") }.keyboardShortcut("r").help("Refresh all queries (⌘R)")
+                Button { model.refreshAll() } label: { Label("Refresh All", systemImage: "arrow.clockwise") }.help("Refresh all queries (⌘R)")
                 Picker("Auto-refresh", selection: $model.collection.refreshSeconds) {
-                    Text("Auto: Off").tag(0); Text("30s").tag(30); Text("1m").tag(60); Text("5m").tag(300)
+                    Text("Auto off").tag(0); Text("Auto 30s").tag(30); Text("Auto 1m").tag(60); Text("Auto 5m").tag(300)
                 }.fixedSize().help("Choose how often all queries refresh automatically").onChange(of: model.collection.refreshSeconds) { model.persist(); model.scheduleNext() }
                 Menu {
                     Button("Collapse All", systemImage: "chevron.up.2") { withAnimation(.snappy(duration: 0.2)) { model.collapseAll() } }
-                        .keyboardShortcut("[", modifiers: [.command, .shift]).disabled(model.collection.queries.isEmpty).help("Collapse all query cards (⇧⌘[)")
+                        .disabled(model.collection.queries.isEmpty).help("Collapse all query cards (⇧⌘[)")
                     Button("Expand All", systemImage: "chevron.down.2") { withAnimation(.snappy(duration: 0.2)) { model.expandAll() } }
-                        .keyboardShortcut("]", modifiers: [.command, .shift]).disabled(model.collection.queries.isEmpty).help("Expand all query cards (⇧⌘])")
+                        .disabled(model.collection.queries.isEmpty).help("Expand all query cards (⇧⌘])")
                     Divider()
-                    Button("Import Collection…") { model.importCollection() }.help("Replace the current collection from a JSON file")
-                    Button("Export Collection…") { model.exportCollection() }.help("Save the current collection to a JSON file")
-                } label: { Label("Collection", systemImage: "folder") }.help("Import or export a query collection")
-                Button { model.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }.keyboardShortcut(",").help("Configure gcx and your connection (⌘,)")
+                    Button("Import Collection…") { model.showImporter = true }.help("Replace the current collection from a JSON file")
+                    Button("Export Collection…") { model.showExporter = true }.help("Save the current collection to a JSON file")
+                } label: { Label("Collection", systemImage: "folder") }.help("Collapse, expand, import or export queries")
+                Button { openSettings() } label: { Label("Settings", systemImage: "gearshape") }.help("Configure gcx and your connection (⌘,)")
             }
         }
-        .sheet(isPresented: $model.showSettings) { SetupView(model: model) }
-        .sheet(item: $editing) { query in QueryEditor(query: query, datasources: model.datasources) { model.save($0) } }
-        .alert("Queries", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") { model.error = nil } } message: { Text(model.error ?? "") }
-        .confirmationDialog("Delete \(deleting?.title ?? "query")?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
-            Button("Delete", role: .destructive) { if let deleting { model.delete(deleting) }; deleting = nil }
+        .sheet(item: $model.editing) { query in QueryEditor(query: query, datasources: model.datasources) { model.save($0) } }
+        .fileImporter(isPresented: $model.showImporter, allowedContentTypes: [.json]) { result in
+            switch result {
+            case .success(let url): model.importCollection(from: url)
+            case .failure(let error): model.error = error.localizedDescription
+            }
         }
+        .fileExporter(isPresented: $model.showExporter, document: model.showExporter ? CollectionDocument(data: (try? model.exportData()) ?? Data()) : CollectionDocument(data: Data()), contentType: .json, defaultFilename: "Queries") { result in
+            if case .failure(let error) = result { model.error = error.localizedDescription }
+        }
+        .alert("Queries", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") { model.error = nil } } message: { Text(model.error ?? "") }
+        .confirmationDialog("Delete \(deleting?.title ?? "query")?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { if let deleting { model.delete(deleting) }; deleting = nil }
+        } message: { Text("This removes the saved query. This can't be undone.") }
+        .confirmationDialog("Replace this query collection?", isPresented: Binding(get: { model.pendingImport != nil }, set: { if !$0 { model.pendingImport = nil } }), titleVisibility: .visible) {
+            Button("Replace", role: .destructive) { model.confirmImport() }
+        } message: { Text("A local backup of the existing collection will be created first.") }
+        .onChange(of: model.showSettings) { _, show in if show { model.showSettings = false; openSettings() } }
         .onReceive(clock) { _ in model.tick() }
         .onChange(of: scenePhase) { model.activityChanged(scenePhase == .active) }
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in model.activityChanged(false) }
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in model.activityChanged(NSApp.isActive) }
-        .task { await model.testConnection(); model.scheduleNext() }
+        .task { if model.showSettings { model.showSettings = false; openSettings() }; await model.testConnection(); model.scheduleNext() }
+    }
+    @ViewBuilder private var rangeFields: some View {
+        DatePicker("From", selection: $model.customStart)
+        DatePicker("To", selection: $model.customEnd)
+        Button("Apply Range") { model.rangeChanged() }
+    }
+    private var countText: String {
+        model.runningCount > 0 ? "Refreshing \(model.runningCount) \(model.runningCount == 1 ? "query" : "queries")…" : "\(model.collection.queries.count) saved \(model.collection.queries.count == 1 ? "query" : "queries")"
+    }
+    private var rangeText: String { "\(model.window.start.formatted(date: .omitted, time: .standard)) – \(model.window.end.formatted(date: .omitted, time: .standard))" }
+    private var statusBar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                if model.runningCount > 0 { ProgressView().controlSize(.mini) }
+                Text(countText)
+                Spacer(minLength: 12)
+                if model.collection.refreshSeconds > 0 { Label("Auto-refresh \(model.nextRefresh == nil ? "paused" : "on")", systemImage: model.nextRefresh == nil ? "pause.circle" : "arrow.triangle.2.circlepath") }
+                Text(rangeText).monospacedDigit()
+            }
+            HStack(spacing: 8) {
+                if model.runningCount > 0 { ProgressView().controlSize(.mini) }
+                Text(countText).lineLimit(1)
+                Spacer(minLength: 12)
+                Text(rangeText).monospacedDigit().lineLimit(1)
+            }
+            HStack(spacing: 8) { Text(countText).lineLimit(1); Spacer(minLength: 0) }
+        }.font(.callout).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
     }
     private var rangeBinding: Binding<Double> { Binding(get: { model.customRange ? -1 : model.collection.rangeSeconds }, set: { value in model.customRange = value == -1; if value > 0 { model.collection.rangeSeconds = value }; model.rangeChanged() }) }
 }
@@ -122,7 +172,7 @@ struct SetupView: View {
                 Spacer()
                 Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
             }
-        }.padding(26).frame(width: 600)
+        }.padding(26).frame(width: 600).fixedSize(horizontal: false, vertical: true)
     }
 }
 struct QueryEditor: View {
@@ -134,6 +184,8 @@ struct QueryEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label("Edit Query", systemImage: "square.and.pencil").font(.title2.bold())
+            ScrollView {
+              VStack(alignment: .leading, spacing: 16) {
             TextField("Title", text: $query.title)
             HStack {
                 Picker("Language", selection: $query.language) { ForEach(QueryLanguage.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
@@ -156,12 +208,14 @@ struct QueryEditor: View {
                 .accessibilityLabel("Query notes")
                 .help("Add context, expected values, or tips for interpreting results")
             if let error { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.callout) }
+              }.padding(.horizontal, 2)
+            }
             HStack {
                 Text("Runs only when requested or on auto-refresh.").font(.callout).foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") { do { try query.validate(); save(query); dismiss() } catch { self.error = error.localizedDescription } }.keyboardShortcut(.defaultAction)
             }
-        }.padding(26).frame(width: 680)
+        }.padding(26).frame(width: 680).frame(minHeight: 340, idealHeight: 640, maxHeight: 760)
     }
 }

@@ -30,7 +30,14 @@ struct CardState {
     @Published var customStart = Date().addingTimeInterval(-3600)
     @Published var customEnd = Date()
     @Published var nextRefresh: Date?
-    @Published var collapsed: Set<UUID> = []
+    private static let collapsedKey = "collapsedQueries"
+    @Published var collapsed: Set<UUID> = [] {
+        didSet { UserDefaults.standard.set(collapsed.map(\.uuidString), forKey: Self.collapsedKey) }
+    }
+    @Published var editing: SavedQuery?
+    @Published var showImporter = false
+    @Published var showExporter = false
+    @Published var pendingImport: Data?
     func collapseAll() { collapsed = Set(collection.queries.map(\.id)) }
     func expandAll() { collapsed = [] }
     private let store: QueryStore
@@ -45,6 +52,7 @@ struct CardState {
         self.store = store; executorOverride = executor
         executablePath = GCXRunner.discover(preferred: UserDefaults.standard.string(forKey: "gcxPath") ?? "") ?? ""
         window = QueryWindow(start: Date().addingTimeInterval(-3600), end: Date())
+        collapsed = Set((UserDefaults.standard.stringArray(forKey: Self.collapsedKey) ?? []).compactMap(UUID.init(uuidString:)))
         do { collection = try store.load() } catch { self.error = error.localizedDescription }
         if collection.context.isEmpty { showSettings = true }
         resolveWindow()
@@ -126,6 +134,13 @@ struct CardState {
         guard let index = collection.queries.firstIndex(where: { $0.id == query.id }), collection.queries.indices.contains(index + offset) else { return }
         collection.queries.swapAt(index, index + offset); persist()
     }
+    func move(_ id: UUID, before target: UUID) {
+        guard id != target, let from = collection.queries.firstIndex(where: { $0.id == id }),
+              collection.queries.contains(where: { $0.id == target }) else { return }
+        let item = collection.queries.remove(at: from)
+        let to = collection.queries.firstIndex(where: { $0.id == target }) ?? collection.queries.endIndex
+        collection.queries.insert(item, at: to); persist()
+    }
     func scheduleNext() { nextRefresh = collection.refreshSeconds > 0 && active ? Date().addingTimeInterval(Double(collection.refreshSeconds)) : nil }
     func tick() { if active, let nextRefresh, Date() >= nextRefresh, runningCount == 0 { refreshAll() } }
     func activityChanged(_ isActive: Bool) {
@@ -151,22 +166,20 @@ struct CardState {
             UserDefaults.standard.set(path, forKey: "gcxPath"); persist()
         } catch { setupStatus = error.localizedDescription + " Authenticate in Terminal and retry." }
     }
-    func importCollection() {
-        let panel = NSOpenPanel(); panel.allowedContentTypes = [.json]; panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+    func importCollection(from url: URL) {
+        let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do { let data = try Data(contentsOf: url); _ = try store.decode(data); pendingImport = data }
+        catch { self.error = error.localizedDescription }
+    }
+    func confirmImport() {
+        guard let data = pendingImport else { return }
+        pendingImport = nil
         do {
-            let data = try Data(contentsOf: url); _ = try store.decode(data)
-            let alert = NSAlert(); alert.messageText = "Replace this query collection?"; alert.informativeText = "A local backup of the existing collection will be created first."; alert.addButton(withTitle: "Replace"); alert.addButton(withTitle: "Cancel")
-            guard alert.runModal() == .alertFirstButtonReturn else { return }
             let imported = try store.replace(with: data)
-            cancelAll(); states = [:]; collection = imported; datasources = []; customRange = false; resolveWindow(); scheduleNext()
+            cancelAll(); states = [:]; collapsed = []; collection = imported; datasources = []; customRange = false; resolveWindow(); scheduleNext()
         } catch { self.error = error.localizedDescription }
     }
-    func exportCollection() {
-        let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "Queries.json"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { try store.encode(collection).write(to: url, options: .atomic) } catch { self.error = error.localizedDescription }
-    }
+    func exportData() throws -> Data { try store.encode(collection) }
     func addLocalExamples() {
         for (title, text, language, kind, uid) in [
             ("Demo load", "queries_demo_load", QueryLanguage.promQL, ResultKind.metrics, "queries-prometheus"),

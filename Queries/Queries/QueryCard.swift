@@ -2,6 +2,19 @@ import SwiftUI
 import Charts
 import AppKit
 
+struct ResultHeights {
+    var viewport: CGFloat = 800
+    var chart: CGFloat { min(max(viewport * 0.4, 220), 460) }
+    var empty: CGFloat { min(max(viewport * 0.25, 140), 200) }
+}
+private struct ResultHeightsKey: EnvironmentKey { static let defaultValue = ResultHeights() }
+extension EnvironmentValues {
+    var resultHeights: ResultHeights {
+        get { self[ResultHeightsKey.self] }
+        set { self[ResultHeightsKey.self] = newValue }
+    }
+}
+
 struct QueryCard: View {
     let query: SavedQuery
     let state: CardState
@@ -15,10 +28,14 @@ struct QueryCard: View {
     let down: () -> Void
     let delete: () -> Void
     @State private var showingNotes = false
+    @Environment(\.resultHeights) private var heights
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).frame(width: 14)
+                    .draggable(query.id.uuidString) { Text(query.title).padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8)) }
+                    .help("Drag to reorder").accessibilityHidden(true)
                 Button {
                     withAnimation(.snappy(duration: 0.2)) { isExpanded.toggle() }
                 } label: {
@@ -76,20 +93,20 @@ struct QueryCard: View {
                     Button("Move Up", systemImage: "arrow.up", action: up); Button("Move Down", systemImage: "arrow.down", action: down)
                     Divider(); Button("Delete", systemImage: "trash", role: .destructive, action: delete)
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Query actions").help("Copy, duplicate, reorder, or delete query")
-            }.buttonStyle(.borderless).labelStyle(.titleAndIcon).controlSize(.large)
+            }.buttonStyle(.borderless).labelStyle(.titleAndIcon)
             if isExpanded {
                 if let error = state.error {
                     Label(error, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(10).background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
                 }
                 if let result = state.result {
-                    if result.isEmpty { ContentUnavailableView("No results", systemImage: "tray", description: Text("The query returned no valid samples in this time range.")).frame(maxWidth: .infinity).frame(height: 180) }
-                    else if query.kind == .logs { LogResults(entries: result.logs).frame(height: 300) }
-                    else { MetricChart(series: result.series, window: window, step: result.window.step, unit: query.unit).frame(height: 260) }
+                    if result.isEmpty { ContentUnavailableView("No results", systemImage: "tray", description: Text("The query returned no valid samples in this time range.")).frame(maxWidth: .infinity).frame(height: heights.empty) }
+                    else if query.kind == .logs { LogResults(entries: result.logs) }
+                    else { MetricChart(series: result.series, window: window, step: result.window.step, unit: query.unit).frame(height: heights.chart) }
                     ForEach(result.warnings, id: \.self) { Text($0).font(.callout).foregroundStyle(.orange) }
                     if query.kind == .logs { Text("Limit: 1,000 entries\(result.possiblyTruncated ? " · Limit reached. More entries may exist." : "")").font(.callout).foregroundStyle(result.possiblyTruncated ? .orange : .secondary) }
                 } else {
-                    ContentUnavailableView(state.loading ? "Running query…" : "Ready to run", systemImage: "chart.xyaxis.line", description: Text("Use Run or Refresh All to fetch results.")).frame(maxWidth: .infinity).frame(height: 180)
+                    ContentUnavailableView(state.loading ? "Running query…" : "Ready to run", systemImage: "chart.xyaxis.line", description: Text("Use Run or Refresh All to fetch results.")).frame(maxWidth: .infinity).frame(height: heights.empty)
                 }
                 if let last = state.lastSuccess {
                     Text("Updated \(last.formatted(date: .omitted, time: .standard))")
@@ -97,9 +114,8 @@ struct QueryCard: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
-        }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 16))
-        .clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(.quaternary))
-        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+        }.padding(16).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 10)).overlay(RoundedRectangle(cornerRadius: 10).stroke(.separator))
     }
 }
 struct MetricChart: View {
@@ -174,18 +190,25 @@ struct LogResults: View {
         return .primary
     }
     @State private var expanded: Set<String> = []
+    @State private var visible = 100
     var body: some View {
-        List(entries) { entry in
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top) {
-                    Button { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } label: { Image(systemName: expanded.contains(entry.id) ? "chevron.down" : "chevron.right") }.buttonStyle(.plain).accessibilityLabel(expanded.contains(entry.id) ? "Collapse log details" : "Expand log details").help(expanded.contains(entry.id) ? "Collapse log details" : "Show full message and labels")
-                    Text(entry.timestamp.formatted(date: .omitted, time: .standard)).foregroundStyle(.secondary).frame(width: 90, alignment: .leading)
-                    Text(entry.text).foregroundStyle(tint(entry.text)).lineLimit(expanded.contains(entry.id) ? nil : 2).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
-                }
-                if expanded.contains(entry.id) {
-                    Text("Timestamp (ns): \(entry.sourceTimestamp)\n" + entry.labels.keys.sorted().map { "\($0)=\(entry.labels[$0]!)" }.joined(separator: "\n")).foregroundStyle(.secondary).textSelection(.enabled)
-                }
-            }.font(.system(.body, design: .monospaced)).padding(.vertical, 3)
-        }.listStyle(.plain)
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(entries.prefix(visible)) { entry in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
+                        Button { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } label: { Image(systemName: expanded.contains(entry.id) ? "chevron.down" : "chevron.right") }.buttonStyle(.plain).accessibilityLabel(expanded.contains(entry.id) ? "Collapse log details" : "Expand log details").help(expanded.contains(entry.id) ? "Collapse log details" : "Show full message and labels")
+                        Text(entry.timestamp.formatted(date: .omitted, time: .standard)).foregroundStyle(.secondary).frame(width: 90, alignment: .leading)
+                        Text(entry.text).foregroundStyle(tint(entry.text)).lineLimit(expanded.contains(entry.id) ? nil : 2).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+                    }
+                    if expanded.contains(entry.id) {
+                        Text("Timestamp (ns): \(entry.sourceTimestamp)\n" + entry.labels.keys.sorted().map { "\($0)=\(entry.labels[$0]!)" }.joined(separator: "\n")).foregroundStyle(.secondary).textSelection(.enabled)
+                    }
+                }.font(.system(.body, design: .monospaced)).padding(.vertical, 5)
+                Divider()
+            }
+            if entries.count > visible {
+                Button("Show \(min(100, entries.count - visible)) more of \(entries.count - visible) remaining") { visible += 100 }.padding(.top, 8)
+            }
+        }
     }
 }
