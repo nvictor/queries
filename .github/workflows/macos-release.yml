@@ -65,10 +65,14 @@ jobs:
           subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', os.environ['KEYCHAIN_PATH'], *paths], check=True)
           PY
       - name: Archive and export
+        env:
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
         run: |
           set -euo pipefail
+          test -n "$SPARKLE_PUBLIC_ED_KEY"
           xcodebuild -project Queries/Queries.xcodeproj -scheme Queries -configuration Release \
             -destination 'platform=macOS,arch=arm64' -archivePath "$PWD/build/Queries.xcarchive" \
+            -derivedDataPath "$PWD/build/DerivedData" SPARKLE_PUBLIC_ED_KEY="$SPARKLE_PUBLIC_ED_KEY" \
             ARCHS=arm64 ONLY_ACTIVE_ARCH=YES ENABLE_HARDENED_RUNTIME=YES CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" MARKETING_VERSION="$APP_VERSION" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" archive
@@ -96,11 +100,29 @@ jobs:
           xcrun notarytool submit build/Queries.dmg --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APP_SPECIFIC_PASSWORD" --wait
           xcrun stapler staple build/Queries.dmg
           xcrun stapler validate build/Queries.dmg
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SPARKLE_PRIVATE_KEY"
+          mkdir -p build/sparkle-updates
+          cp build/Queries.dmg build/sparkle-updates/Queries.dmg
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > build/sparkle_ed25519.key
+          chmod 600 build/sparkle_ed25519.key
+          build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast \
+            --ed-key-file build/sparkle_ed25519.key \
+            --download-url-prefix "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" \
+            build/sparkle-updates
+          rm -f build/sparkle_ed25519.key
       - name: Publish tagged release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: build/Queries.dmg
+          files: |
+            build/Queries.dmg
+            build/sparkle-updates/appcast.xml
+            build/sparkle-updates/*.delta
           fail_on_unmatched_files: true
       - name: Upload manual artifact
         if: github.ref_type != 'tag'

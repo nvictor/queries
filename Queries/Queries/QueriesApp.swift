@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct QueriesApp: App {
+    @StateObject private var updater = AppUpdater()
+
     var body: some Scene {
         Window("Queries", id: "main") {
             ContentView()
+        }
+        .commands {
+            CheckForUpdatesCommands(updater: updater)
         }
     }
 }
