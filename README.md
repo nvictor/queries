@@ -11,3 +11,5 @@ Keep reusable PromQL and LogQL queries in a native macOS stack. Refresh them tog
 - Save, reorder, duplicate, import, and export your collection.
 
 Requires macOS 27.2 or later, with [gcx](https://github.com/grafana/gcx) installed and authenticated.
+
+[Write a JSON import file](docs/import-file.md) to create or edit a query collection outside the app.
