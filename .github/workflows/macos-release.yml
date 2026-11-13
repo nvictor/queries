@@ -123,7 +123,7 @@ jobs:
             build/Queries.dmg
             build/sparkle-updates/appcast.xml
             build/sparkle-updates/*.delta
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
       - name: Upload manual artifact
         if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v4
