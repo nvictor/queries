@@ -1,0 +1,62 @@
+Execute a metric LogQL query and return time-series results.
+
+EXPR is a metric LogQL expression (e.g., rate, count_over_time, sum).
+Datasource is resolved from -d flag or datasources.loki in your context.
+
+CSV preserves original cell values. Spreadsheet apps may interpret values as
+formulas; import untrusted CSV columns as text.
+
+Unlike 'logs query' which returns log lines, 'logs metrics' returns
+time-series data with table, graph, JSON, and CSV formatters.
+
+Instant vs range is deduced from time flags: no time flags = instant query,
+--since or --from/--to = range query.
+Use --share-link to print the equivalent Grafana Explore URL, or --open to
+open it in your browser after the query succeeds.
+
+Usage:
+  gcx logs metrics [EXPR] [flags]
+
+Examples:
+
+  # Run a metric query over logs
+  gcx logs metrics -d UID 'rate({job="grafana"}[5m])' --since 1h
+
+  # Print a Grafana Explore share link for the query
+  gcx logs metrics 'rate({job="grafana"}[5m])' --share-link
+
+  # Output as JSON
+  gcx logs metrics -d UID 'rate({job="grafana"}[5m])' --since 1h -o json
+
+Flags:
+  -d, --datasource string   Datasource UID (required unless datasources.loki is configured)
+      --error-on-empty      Fail if the query returns no results
+      --expr string         Query expression (alternative to positional argument)
+      --from string         Start time (RFC3339, Unix timestamp, or relative like 'now-1h')
+  -h, --help                help for metrics
+      --jq string           jq expression to apply to JSON output. Mutually exclusive with --json.
+      --json string         Comma-separated list of fields to include in JSON output, or 'list' (or '?') to discover available fields
+      --open                Open the executed query in Grafana Explore
+  -o, --output string       Output format. One of: agents, csv, graph, json, table, wide, yaml (default "agents")
+      --share-link          Print the Grafana Explore URL for the executed query to stderr
+      --since string        Duration before --to, or now if omitted (e.g., 30m, 6h, 7d); mutually exclusive with --from
+      --step string         Query step (e.g., '15s', '1m')
+      --to string           End time (RFC3339, Unix timestamp, or relative like 'now')
+
+Global Flags:
+      --agent                       Enable agent mode (JSON output, no color). Auto-detected from known agent identity variables. Set GCX_AGENT_NAME to identify a supported harness, or GCX_AGENT_MODE to control the mode.
+      --config string               Path to the configuration file to use
+      --context string              Name of the context to use (overrides current-context in config)
+      --insecure-log-http-payload   Log full HTTP request/response bodies including raw credentials, authorization tokens, cookies, and OAuth refresh tokens. Requires -vvv. Do not ship these logs.
+      --no-color                    Disable color output
+      --no-truncate                 Disable table column truncation (auto-enabled when stdout is piped)
+  -v, --verbose count               Verbose mode. Multiple -v options increase the verbosity (maximum: 3).
+
+Tip:
+  Use --json list to discover available fields, --json field1,field2 to select specific fields.
+
+Related skill(s):
+  debug-with-grafana — Investigates application problems and incidents using Grafana metrics, logs, and traces via gcx. Use for alerts, errors, latency, regressions, blast radius, or trace comparison. Uses qualified baselines and trace diff to investigate execution changes. Accepts alert payloads, dashboard links, and trace IDs; does not require IRM or all three signals. For alert-rule semantics use investigate-alert; dashboard authoring uses create-dashboard and inventory uses manage-dashboards.
+Read a skill only if it fits your task
+These skills are bundled — no install needed
+gcx agent skills get <name> -otext

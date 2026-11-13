@@ -1,0 +1,121 @@
+name: macOS Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: macos-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  macos:
+    runs-on: xcode-27
+    permissions:
+      contents: write
+    env:
+      SIGNING_IDENTITY: 'Developer ID Application: Victor Noagbodji (2DZ6D8C78T)'
+      KEYCHAIN_PATH: ${{ runner.temp }}/queries-${{ github.run_id }}-${{ github.run_attempt }}.keychain-db
+    steps:
+      - uses: actions/checkout@v5
+      - name: Require macOS 27.2 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=$(find /Applications -maxdepth 1 -name 'Xcode_27*.app' | sort -V | tail -1)
+          sudo xcode-select -s "${XCODE:-/Applications/Xcode.app}"
+          xcodebuild -version
+          SDK=$(xcrun --sdk macosx --show-sdk-version)
+          python3 -c 'import sys; assert tuple(map(int, sys.argv[1].split("."))) >= (27, 2), "macOS 27.2 SDK required"' "$SDK"
+      - name: Test core
+        run: swift test
+      - name: Resolve version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION=0.0.1
+          if [ "$REF_TYPE" = tag ]; then
+            [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            VERSION=${REF_NAME#v}
+          fi
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p build
+      - name: Import Developer ID certificate
+        env:
+          P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$P12"
+          security list-keychains -d user > "$RUNNER_TEMP/queries-original-keychains"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 24)
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          printf '%s' "$P12" | base64 --decode > "$RUNNER_TEMP/queries-DeveloperID.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/queries-DeveloperID.p12" -k "$KEYCHAIN_PATH" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          python3 - <<'PY'
+          import os, shlex, subprocess
+          with open(os.environ['RUNNER_TEMP'] + '/queries-original-keychains') as f:
+              paths = shlex.split(f.read())
+          subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', os.environ['KEYCHAIN_PATH'], *paths], check=True)
+          PY
+      - name: Archive and export
+        run: |
+          set -euo pipefail
+          xcodebuild -project Queries/Queries.xcodeproj -scheme Queries -configuration Release \
+            -destination 'platform=macOS,arch=arm64' -archivePath "$PWD/build/Queries.xcarchive" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES ENABLE_HARDENED_RUNTIME=YES CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" MARKETING_VERSION="$APP_VERSION" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" archive
+          xcodebuild -exportArchive -archivePath "$PWD/build/Queries.xcarchive" \
+            -exportOptionsPlist Queries/ExportOptions-macOS.plist -exportPath "$PWD/build"
+      - name: Notarize app and DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ditto -c -k --keepParent build/Queries.app build/Queries.zip
+          xcrun notarytool submit build/Queries.zip --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APP_SPECIFIC_PASSWORD" --wait
+          xcrun stapler staple build/Queries.app
+          mkdir -p build/dmg-staging
+          ditto build/Queries.app build/dmg-staging/Queries.app
+          ln -s /Applications build/dmg-staging/Applications
+          for attempt in 1 2 3; do
+            hdiutil create -volname Queries -srcfolder build/dmg-staging -fs HFS+ -ov -format UDZO build/Queries.dmg && break
+            test "$attempt" != 3 || exit 1
+            sleep 5
+          done
+          codesign --force --sign "$SIGNING_IDENTITY" build/Queries.dmg
+          xcrun notarytool submit build/Queries.dmg --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APP_SPECIFIC_PASSWORD" --wait
+          xcrun stapler staple build/Queries.dmg
+          xcrun stapler validate build/Queries.dmg
+      - name: Publish tagged release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/Queries.dmg
+          fail_on_unmatched_files: true
+      - name: Upload manual artifact
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Queries-dmg
+          path: build/Queries.dmg
+          if-no-files-found: error
+      - name: Clean signing material
+        if: always()
+        run: |
+          trap 'security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true; rm -f "$RUNNER_TEMP/queries-DeveloperID.p12" "$RUNNER_TEMP/queries-original-keychains"' EXIT
+          python3 - <<'PY'
+          import os, shlex, subprocess
+          path = os.environ['RUNNER_TEMP'] + '/queries-original-keychains'
+          if os.path.exists(path):
+              with open(path) as f: paths = shlex.split(f.read())
+              subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', *paths], check=True)
+          PY

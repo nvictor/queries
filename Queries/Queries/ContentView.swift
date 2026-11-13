@@ -1,0 +1,152 @@
+import SwiftUI
+import AppKit
+import Combine
+import UniformTypeIdentifiers
+
+struct ContentView: View {
+    @StateObject private var model = StackViewModel()
+    @State private var editing: SavedQuery?
+    @State private var deleting: SavedQuery?
+    @Environment(\.scenePhase) private var scenePhase
+    private let clock = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    var body: some View {
+        VStack(spacing: 0) {
+            if model.customRange {
+                HStack {
+                    DatePicker("From", selection: $model.customStart)
+                    DatePicker("To", selection: $model.customEnd)
+                    Button("Apply Range") { model.rangeChanged() }
+                }.padding().background(.bar)
+            }
+            if model.collection.queries.isEmpty {
+                ContentUnavailableView {
+                    Label("Your queries, together", systemImage: "chart.xyaxis.line")
+                } description: {
+                    Text("Save a PromQL or LogQL query to start your stack.")
+                } actions: {
+                    Button("Add Query") { editing = SavedQuery() }.buttonStyle(.borderedProminent)
+                    Button("Add Local Examples") { model.addLocalExamples() }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 18) {
+                        ForEach(model.collection.queries) { query in
+                            QueryCard(query: query, state: model.states[query.id] ?? CardState(), window: model.window,
+                                      datasource: model.datasources.first { $0.uid == query.datasourceUID }?.name ?? query.datasourceUID,
+                                      run: { model.run(query) }, edit: { editing = query }, duplicate: { model.duplicate(query) },
+                                      up: { model.move(query, by: -1) }, down: { model.move(query, by: 1) }, delete: { deleting = query })
+                        }
+                    }.padding(22)
+                }
+            }
+            HStack {
+                Text(model.runningCount > 0 ? "Refreshing \(model.runningCount) queries…" : "\(model.collection.queries.count) saved queries")
+                Spacer()
+                if model.collection.refreshSeconds > 0 { Text("Auto-refresh \(model.nextRefresh == nil ? "paused" : "enabled")") }
+                Text("\(model.window.start.formatted(date: .omitted, time: .standard)) – \(model.window.end.formatted(date: .omitted, time: .standard))")
+            }.font(.caption).foregroundStyle(.secondary).padding(10).background(.bar)
+        }
+        .frame(minWidth: 900, minHeight: 600)
+        .navigationTitle("Queries")
+        .toolbar {
+            ToolbarItemGroup {
+                Button { editing = SavedQuery() } label: { Label("Add Query", systemImage: "plus") }.keyboardShortcut("n")
+                Picker("Time Range", selection: rangeBinding) {
+                    Text("15m").tag(900.0); Text("1h").tag(3600.0); Text("6h").tag(21600.0); Text("24h").tag(86400.0); Text("Custom…").tag(-1.0)
+                }.frame(width: 125)
+                Button { model.refreshAll() } label: { Label("Refresh All", systemImage: "arrow.clockwise") }.keyboardShortcut("r")
+                Picker("Auto-refresh", selection: $model.collection.refreshSeconds) {
+                    Text("Auto: Off").tag(0); Text("30s").tag(30); Text("1m").tag(60); Text("5m").tag(300)
+                }.frame(width: 130).onChange(of: model.collection.refreshSeconds) { model.persist(); model.scheduleNext() }
+                Menu {
+                    Button("Import Collection…") { model.importCollection() }
+                    Button("Export Collection…") { model.exportCollection() }
+                } label: { Label("Collection", systemImage: "folder") }
+                Button { model.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }.keyboardShortcut(",")
+            }
+        }
+        .sheet(isPresented: $model.showSettings) { SetupView(model: model) }
+        .sheet(item: $editing) { query in QueryEditor(query: query, datasources: model.datasources) { model.save($0) } }
+        .alert("Queries", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("OK") { model.error = nil } } message: { Text(model.error ?? "") }
+        .confirmationDialog("Delete \(deleting?.title ?? "query")?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+            Button("Delete", role: .destructive) { if let deleting { model.delete(deleting) }; deleting = nil }
+        }
+        .onReceive(clock) { _ in model.tick() }
+        .onChange(of: scenePhase) { model.activityChanged(scenePhase == .active) }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in model.activityChanged(false) }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in model.activityChanged(NSApp.isActive) }
+        .task { await model.testConnection(); model.scheduleNext() }
+    }
+    private var rangeBinding: Binding<Double> { Binding(get: { model.customRange ? -1 : model.collection.rangeSeconds }, set: { value in model.customRange = value == -1; if value > 0 { model.collection.rangeSeconds = value }; model.rangeChanged() }) }
+}
+
+struct SetupView: View {
+    @ObservedObject var model: StackViewModel
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Label("Connect gcx", systemImage: "terminal").font(.title2.bold())
+            Text("Queries reuses your gcx authentication. Credentials stay in gcx.").foregroundStyle(.secondary)
+            HStack {
+                TextField("Absolute gcx executable path", text: $model.executablePath).onChange(of: model.executablePath) { model.settingsChanged() }
+                Button("Choose…") {
+                    let panel = NSOpenPanel(); panel.canChooseDirectories = false
+                    if panel.runModal() == .OK, let url = panel.url { model.executablePath = url.path }
+                }
+            }
+            Text(model.version).font(.caption).textSelection(.enabled)
+            HStack {
+                TextField("Authenticated context", text: $model.collection.context).onChange(of: model.collection.context) { model.settingsChanged() }
+                Menu("Contexts") { ForEach(model.contexts, id: \.self) { context in Button(context) { model.collection.context = context } } }
+            }
+            Text("Install and authenticate in Terminal:").font(.headline)
+            HStack {
+                Text("brew install gcx\ngcx login CONTEXT_NAME").font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                Spacer()
+                Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString("brew install gcx\ngcx login CONTEXT_NAME", forType: .string) }
+            }.padding().background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            Text(model.setupStatus).textSelection(.enabled)
+            if !model.datasources.isEmpty { ForEach(model.datasources) { source in Text("\(source.name) · \(source.type)").font(.caption).foregroundStyle(.secondary) } }
+            HStack {
+                Button("Retry / Test Connection") { Task { await model.testConnection() } }.disabled(model.setupBusy)
+                if model.setupBusy { ProgressView().controlSize(.small) }
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+        }.padding(26).frame(width: 600)
+    }
+}
+struct QueryEditor: View {
+    @State var query: SavedQuery
+    let datasources: [Datasource]
+    let save: (SavedQuery) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var error: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Edit Query").font(.title2.bold())
+            TextField("Title", text: $query.title)
+            HStack {
+                Picker("Language", selection: $query.language) { ForEach(QueryLanguage.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                    .onChange(of: query.language) { if query.language == .promQL { query.kind = .metrics } }
+                Picker("Result", selection: $query.kind) { ForEach(ResultKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.disabled(query.language == .promQL)
+            }
+            HStack {
+                TextField("Data source UID", text: $query.datasourceUID)
+                Menu("Data Sources") {
+                    ForEach(datasources.filter { $0.type == (query.language == .promQL ? "prometheus" : "loki") }) { source in Button(source.name) { query.datasourceUID = source.uid } }
+                }
+            }
+            Text("Expression").font(.headline)
+            TextEditor(text: $query.text).font(.system(.body, design: .monospaced)).frame(minHeight: 200).border(.quaternary)
+            TextField("Unit (optional, display label)", text: $query.unit)
+            if let error { Text(error).foregroundStyle(.red) }
+            HStack {
+                Text("Runs only when requested or on auto-refresh.").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Save") { do { try query.validate(); save(query); dismiss() } catch { self.error = error.localizedDescription } }.keyboardShortcut(.defaultAction)
+            }
+        }.padding(26).frame(width: 680)
+    }
+}

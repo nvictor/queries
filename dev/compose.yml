@@ -1,0 +1,25 @@
+name: queries-dev
+services:
+  grafana:
+    image: grafana/grafana:12.3.0
+    ports: ["127.0.0.1:3300:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: queries-local-only
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on: [prometheus, loki]
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  loki:
+    image: grafana/loki:3.5.0
+    command: -config.file=/etc/loki/local-config.yaml
+  samples:
+    image: python:3.13.3-alpine
+    command: python /sample.py
+    volumes:
+      - ./sample.py:/sample.py:ro
+    depends_on: [loki]

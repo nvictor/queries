@@ -1,0 +1,593 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "streams",
+    "result": [
+      {
+        "stream": {
+          "job": "queries-demo",
+          "service": "demo",
+          "service_name": "demo"
+        },
+        "values": [
+          {
+            "timestamp": "1794541057030325963",
+            "line": "demo request completed sequence=55 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541052027140335",
+            "line": "demo request completed sequence=54 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541047022178014",
+            "line": "demo request completed sequence=53 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541042013235303",
+            "line": "demo request completed sequence=52 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541037008580551",
+            "line": "demo request completed sequence=51 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541032004237090",
+            "line": "demo request completed sequence=50 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541026999685754",
+            "line": "demo request completed sequence=49 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541021996313793",
+            "line": "demo request completed sequence=48 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541016991269972",
+            "line": "demo request completed sequence=47 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541011985863303",
+            "line": "demo request completed sequence=46 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541006979880676",
+            "line": "demo request completed sequence=45 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794541001970695548",
+            "line": "demo request completed sequence=44 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540996960578629",
+            "line": "demo request completed sequence=43 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540991948195668",
+            "line": "demo request completed sequence=42 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540986944132139",
+            "line": "demo request completed sequence=41 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540981936165678",
+            "line": "demo request completed sequence=40 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540976931245509",
+            "line": "demo request completed sequence=39 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540971923563007",
+            "line": "demo request completed sequence=38 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540966914650171",
+            "line": "demo request completed sequence=37 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540961905705377",
+            "line": "demo request completed sequence=36 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540956899401139",
+            "line": "demo request completed sequence=35 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540951890756261",
+            "line": "demo request completed sequence=34 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540946884317301",
+            "line": "demo request completed sequence=33 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540941878633257",
+            "line": "demo request completed sequence=32 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540936872581671",
+            "line": "demo request completed sequence=31 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540931866457668",
+            "line": "demo request completed sequence=30 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540926860000847",
+            "line": "demo request completed sequence=29 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540921853834136",
+            "line": "demo request completed sequence=28 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540916844130884",
+            "line": "demo request completed sequence=27 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540911838547382",
+            "line": "demo request completed sequence=26 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540906831519379",
+            "line": "demo request completed sequence=25 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540901825442335",
+            "line": "demo request completed sequence=24 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540896816314222",
+            "line": "demo request completed sequence=23 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540891806255095",
+            "line": "demo request completed sequence=22 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540886796696217",
+            "line": "demo request completed sequence=21 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540881786618715",
+            "line": "demo request completed sequence=20 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540876777651004",
+            "line": "demo request completed sequence=19 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540871771139793",
+            "line": "demo request completed sequence=18 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540866761633555",
+            "line": "demo request completed sequence=17 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540861752116136",
+            "line": "demo request completed sequence=16 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540856744868759",
+            "line": "demo request completed sequence=15 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540851737762131",
+            "line": "demo request completed sequence=14 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540846731974587",
+            "line": "demo request completed sequence=13 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540841722748793",
+            "line": "demo request completed sequence=12 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540836719357930",
+            "line": "demo request completed sequence=11 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540831712575886",
+            "line": "demo request completed sequence=10 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540826704886092",
+            "line": "demo request completed sequence=9 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540821698855798",
+            "line": "demo request completed sequence=8 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540816691367712",
+            "line": "demo request completed sequence=7 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540811686042418",
+            "line": "demo request completed sequence=6 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540806680069514",
+            "line": "demo request completed sequence=5 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540801676600428",
+            "line": "demo request completed sequence=4 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540796669327550",
+            "line": "demo request completed sequence=3 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540791662665548",
+            "line": "demo request completed sequence=2 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540786653163837",
+            "line": "demo request completed sequence=1 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540781638296627",
+            "line": "demo request completed sequence=0 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540779266461626",
+            "line": "demo request completed sequence=24 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540774261024262",
+            "line": "demo request completed sequence=23 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540769252785135",
+            "line": "demo request completed sequence=22 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540764245158424",
+            "line": "demo request completed sequence=21 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540759238858547",
+            "line": "demo request completed sequence=20 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540754230166795",
+            "line": "demo request completed sequence=19 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540749223547292",
+            "line": "demo request completed sequence=18 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540744214287804",
+            "line": "demo request completed sequence=17 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540739205981468",
+            "line": "demo request completed sequence=16 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540734196122133",
+            "line": "demo request completed sequence=15 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540729187013922",
+            "line": "demo request completed sequence=14 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540724179401920",
+            "line": "demo request completed sequence=13 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540719175123417",
+            "line": "demo request completed sequence=12 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540714167895054",
+            "line": "demo request completed sequence=11 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540709162313843",
+            "line": "demo request completed sequence=10 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540704153490341",
+            "line": "demo request completed sequence=9 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540699145519714",
+            "line": "demo request completed sequence=8 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540694140014586",
+            "line": "demo request completed sequence=7 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540689129791917",
+            "line": "demo request completed sequence=6 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540684122927429",
+            "line": "demo request completed sequence=5 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540679113959010",
+            "line": "demo request completed sequence=4 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540674109211174",
+            "line": "demo request completed sequence=3 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540669104758130",
+            "line": "demo request completed sequence=2 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540664099483878",
+            "line": "demo request completed sequence=1 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          },
+          {
+            "timestamp": "1794540659084462375",
+            "line": "demo request completed sequence=0 status=200",
+            "structuredMetadata": {
+              "detected_level": "unknown"
+            }
+          }
+        ]
+      }
+    ],
+    "stats": {
+      "summary": {
+        "bytesProcessedPerSecond": 790478,
+        "linesProcessedPerSecond": 14984,
+        "totalBytesProcessed": 4273,
+        "totalLinesProcessed": 81,
+        "execTime": 0.005406
+      }
+    }
+  }
+}
