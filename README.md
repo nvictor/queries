@@ -10,6 +10,6 @@ Keep reusable PromQL and LogQL queries in a native macOS stack. Refresh them tog
 - Shared time ranges, independent refreshes, and copyable query text.
 - Save, reorder, duplicate, import, and export your collection.
 
-Requires macOS 27.2 or later, with [gcx](https://github.com/grafana/gcx) installed and authenticated.
+Requires macOS 27.2 or later and Apple Silicon, with [gcx](https://github.com/grafana/gcx) installed and authenticated to your Grafana.
 
 [Write a JSON import file](docs/import-file.md) to create or edit a query collection outside the app.
