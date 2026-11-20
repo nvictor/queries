@@ -12,7 +12,7 @@ public struct QueryExecutor: QueryExecuting {
         if query.language == .logQL && query.kind == .metrics { args = ["logs", "metrics", "--datasource", query.datasourceUID] }
         else { args = ["datasources", "query", query.datasourceUID] }
         args += ["--expr", query.text, "--context", context, "--from", ISO8601DateFormatter().string(from: window.start), "--to", ISO8601DateFormatter().string(from: window.end), "-o", "json", "--no-color"]
-        if query.kind == .logs { args += ["--limit", "1000"] }
+        if query.kind == .logs { args += ["--limit", "25"] }
         else { args += ["--step", "\(window.step)s"] }
         return args
     }

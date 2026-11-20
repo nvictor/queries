@@ -2,7 +2,7 @@ import Foundation
 import CryptoKit
 
 public enum ResultNormalizer {
-    public static func decode(_ data: Data, kind: ResultKind, window: QueryWindow, limit: Int = 1000) throws -> QueryResult {
+    public static func decode(_ data: Data, kind: ResultKind, window: QueryWindow, limit: Int = 25) throws -> QueryResult {
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String:Any], root["status"] as? String == "success",
               let body = root["data"] as? [String:Any], let type = body["resultType"] as? String,
               let rows = body["result"] as? [[String:Any]] else { throw QueryError.message("gcx returned an unsuccessful or unsupported response. Check the query in Grafana Explore.") }

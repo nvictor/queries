@@ -24,7 +24,7 @@ Exact query argument patterns, with absolute RFC3339 boundaries recorded in `Tes
 
 ```text
 gcx datasources query queries-prometheus --expr queries_demo_load --context queries-local --from START --to END --step 10s -o json --no-color
-gcx datasources query queries-loki --expr '{job="queries-demo"}' --context queries-local --from START --to END --limit 1000 -o json --no-color
+gcx datasources query queries-loki --expr '{job="queries-demo"}' --context queries-local --from START --to END --limit 25 -o json --no-color
 gcx logs metrics --datasource queries-loki --expr 'sum(rate({job="queries-demo"}[1m]))' --context queries-local --from START --to END --step 10s -o json --no-color
 ```
 
