@@ -112,18 +112,31 @@ jobs:
           chmod 600 build/sparkle_ed25519.key
           build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast \
             --ed-key-file build/sparkle_ed25519.key \
-            --download-url-prefix "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" \
+            --download-url-prefix "https://github.com/nvictor/macos-releases/releases/download/queries-${GITHUB_REF_NAME}/" \
             build/sparkle-updates
           rm -f build/sparkle_ed25519.key
-      - name: Publish tagged release
+      - name: Publish to macos-releases
         if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            build/Queries.dmg
-            build/sparkle-updates/appcast.xml
-            build/sparkle-updates/*.delta
-          fail_on_unmatched_files: false
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN"
+          shopt -s nullglob
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          gh release create "queries-$TAG" "build/Queries.dmg" build/sparkle-updates/*.delta \
+            --repo nvictor/macos-releases \
+            --title "Queries $VERSION" \
+            --notes "Queries $VERSION"
+          git clone "https://x-access-token:$GH_TOKEN@github.com/nvictor/macos-releases.git" build/releases
+          mkdir -p "build/releases/Queries"
+          cp build/sparkle-updates/appcast.xml "build/releases/Queries/appcast.xml"
+          cd build/releases
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "Queries/appcast.xml"
+          git commit -m "Publish Queries $VERSION"
+          git push origin main
       - name: Upload manual artifact
         if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v4
